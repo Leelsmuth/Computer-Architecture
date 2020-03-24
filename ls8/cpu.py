@@ -2,6 +2,12 @@
 
 import sys
 
+#create instructions for LDI, PRN, HLT, and MUL programs
+LDI = 0b10000010
+PRN = 0b01000111
+HLT = 0b00000001
+MUL = 0b10100010
+
 
 class CPU:
     """Main CPU class."""
@@ -9,9 +15,11 @@ class CPU:
     def __init__(self):
         """Construct a new CPU."""
         # setup ram, register, and pc
-        self.ram = [0] * 255
+        self.ram = [0] * 256
         self.reg = [0] * 8
         self.pc = 0
+        self.branchtable = {}
+
         
     def ram_read(self, mar):
       return self.ram[mar]
@@ -24,23 +32,40 @@ class CPU:
     def load(self):
         """Load a program into memory."""
 
+        if len(sys.argv) != 2:
+            print("format: ls8.py [filename]")
+            sys.exit(1)
+
+        program = sys.argv[1]
         address = 0
 
         # For now, we've just hardcoded a program:
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        # program = [
+        #     # From print8.ls8
+        #     0b10000010, # LDI R0,8
+        #     0b00000000,
+        #     0b00001000,
+        #     0b01000111, # PRN R0
+        #     0b00000000,
+        #     0b00000001, # HLT
+        # ]
+        
+        #open file
+        with open(program) as file:
+            #read the lines
+            for line in file:
+                #parse out comments
+                line = line.strip().split("#")
+                #cast numbers from strings to ints
+                val = line[0].strip()
+                #ignore blank lines
+                if line == "":
+                    continue
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+                value = int(val, 2)
+                self.ram[address] = value
+                address +=1
 
 
     def alu(self, op, reg_a, reg_b):
@@ -49,6 +74,9 @@ class CPU:
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
         #elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
+            
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -74,10 +102,7 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        #create instructions for LDI, PRN, and HLT programs
-        LDI = 0b10000010
-        PRN = 0b01000111
-        HLT = 0b00000001
+
         #set running to True
         running = True
 
@@ -103,6 +128,11 @@ class CPU:
                 print(self.reg[operand_a])
                 self.pc +=2
 
+            elif IR == MUL:
+                self.alu('MUL', operand_a, operand_b)
+                # self.reg[operand_a] *= self.reg[operand_b]
+                self.pc += 3
+                
             # if the instruction register is the halt command
             elif IR == HLT:
                 #set running to false and exit
