@@ -19,6 +19,12 @@ class CPU:
         self.reg = [0] * 8
         self.pc = 0
         self.branchtable = {}
+        self.branchtable[HLT] = self.handle_hlt
+        self.branchtable[LDI] = self.handle_ldi
+        self.branchtable[PRN] = self.handle_prn
+        self.branchtable[MUL] = self.handle_mul
+        self.halted = False
+        
 
         
     def ram_read(self, mar):
@@ -56,9 +62,9 @@ class CPU:
             #read the lines
             for line in file:
                 #parse out comments
-                line = line.strip().split("#")
+                line = line.strip().split("#")[0]
                 #cast numbers from strings to ints
-                val = line[0].strip()
+                val = line.strip()
                 #ignore blank lines
                 if line == "":
                     continue
@@ -99,46 +105,78 @@ class CPU:
             print(" %02X" % self.reg[i], end='')
 
         print()
+        
+        
+    def handle_ldi(self):
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
 
+        self.reg[operand_a] = operand_b
+
+    def handle_prn(self):
+        operand_a = self.ram_read(self.pc + 1)
+        print(self.reg[operand_a])
+
+    def handle_hlt(self):
+        self.halted = True
+
+    def handle_mul(self):
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+        self.alu("MUL", operand_a, operand_b)
+        
     def run(self):
-        """Run the CPU."""
-
-        #set running to True
-        running = True
-
-        #while cpu is running
-        while running:
-            #  set instruction register per step 3
+        while self.halted != True:
             IR = self.ram[self.pc]
+            val = IR
+            op_count = val >> 6
+            IR_length = op_count + 1
+            self.branchtable[IR]()
 
-            # set operand_a to pc+1 per step 3
-            operand_a = self.ram_read(self.pc + 1)
-            # set operand_b to pc+2 per step 3
-            operand_b = self.ram_read(self.pc + 2)
-
-            # if the instruction register is LDI
-            if IR == LDI:
-                #set register of operand_a to operand_b, jump 3 in PC (to PRN currently)
-                self.reg[operand_a] = operand_b
-                self.pc +=3
-
-            # if the instruction register is PRN
-            elif IR == PRN:
-                #print the register of operand_a, jump 2 in PC
-                print(self.reg[operand_a])
-                self.pc +=2
-
-            elif IR == MUL:
-                self.alu('MUL', operand_a, operand_b)
-                # self.reg[operand_a] *= self.reg[operand_b]
-                self.pc += 3
-                
-            # if the instruction register is the halt command
-            elif IR == HLT:
-                #set running to false and exit
-                running = False
-                sys.exit(0)
-            # if anything else, invalid command and quit with failure code 1
-            else:
-                print(f"Invalid Command: {self.ram[self.pc]}")
+            if IR == 0 or None:
+                print(f"Unknown instructions and index {self.pc}")
                 sys.exit(1)
+            self.pc += IR_length
+
+    # def run(self):
+    #     """Run the CPU."""
+
+    #     #set running to True
+    #     running = True
+
+    #     #while cpu is running
+    #     while running:
+    #         #  set instruction register per step 3
+    #         IR = self.ram[self.pc]
+
+    #         # set operand_a to pc+1 per step 3
+    #         operand_a = self.ram_read(self.pc + 1)
+    #         # set operand_b to pc+2 per step 3
+    #         operand_b = self.ram_read(self.pc + 2)
+
+    #         # if the instruction register is LDI
+    #         if IR == LDI:
+    #             #set register of operand_a to operand_b, jump 3 in PC (to PRN currently)
+    #             self.reg[operand_a] = operand_b
+    #             self.pc +=3
+
+    #         # if the instruction register is PRN
+    #         elif IR == PRN:
+    #             #print the register of operand_a, jump 2 in PC
+    #             print(self.reg[operand_a])
+    #             self.pc +=2
+
+    #         elif IR == MUL:
+    #             self.alu('MUL', operand_a, operand_b)
+    #             # self.reg[operand_a] *= self.reg[operand_b]
+    #             self.pc += 3
+                
+    #         # if the instruction register is the halt command
+    #         elif IR == HLT:
+    #             #set running to false and exit
+    #             running = False
+    #             sys.exit(0)
+    #         # if anything else, invalid command and quit with failure code 1
+    #         else:
+    #             print(f"Invalid Command: {self.ram[self.pc]}")
+    #             sys.exit(1)
