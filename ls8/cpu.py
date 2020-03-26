@@ -7,6 +7,9 @@ LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
 MUL = 0b10100010
+PUSH = 0b01000101
+POP = 0b01000110
+SP = 7
 
 
 class CPU:
@@ -23,7 +26,11 @@ class CPU:
         self.branchtable[LDI] = self.handle_ldi
         self.branchtable[PRN] = self.handle_prn
         self.branchtable[MUL] = self.handle_mul
+        self.branchtable[PUSH] = self.handle_push
+        self.branchtable[POP] = self.handle_pop
         self.halted = False
+        #register 7 is reserved as the stack pointer, which is 0xf4 per specs
+        self.reg[SP] = 0xf4
         
 
         
@@ -125,11 +132,29 @@ class CPU:
         operand_b = self.ram_read(self.pc + 2)
         self.alu("MUL", operand_a, operand_b)
         
+    #method to handle push on the stack
+    def handle_push(self):
+        #decrement the SP register
+        self.reg[SP] -= 1
+        #set operand_a
+        operand_a = self.ram_read(self.pc + 1)
+        # copy the value in the given register to the address pointed to by SP
+        operand_b = self.reg[operand_a]
+        self.ram[self.reg[SP]] = operand_b
+
+    #method to handle popping from the stack to the register
+    def handle_pop(self):
+        operand_a = self.ram_read(self.pc + 1)
+        # copy the value from the address pointed to by SP to the given register
+        operand_b = self.ram[self.reg[SP]]
+        self.reg[operand_a] = operand_b
+        #increment the SP
+        self.reg[SP] += 1
+        
     def run(self):
         while self.halted != True:
             IR = self.ram[self.pc]
-            val = IR
-            op_count = val >> 6
+            op_count = IR >> 6
             IR_length = op_count + 1
             self.branchtable[IR]()
 
